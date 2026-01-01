@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 
-const GEMINI_MODEL = 'gemini-3-pro-preview';
+const GEMINI_MODEL = 'gemini-3-flash-preview';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export type PersonaId = 
@@ -249,7 +249,7 @@ export async function generatePersonaImage(personaName: string): Promise<string>
     const prompt = `A highly detailed, professional portrait of ${personaName}, matching their historical or modern style. Photorealistic or artistic depending on the person.`;
     
     const response = await aiImage.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
+        model: 'gemini-3-flash-preview',
         contents: { parts: [{ text: prompt }] },
         config: { imageConfig: { aspectRatio: "1:1" } }
     });
