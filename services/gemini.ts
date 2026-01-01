@@ -7,6 +7,7 @@ const GEMINI_MODEL = "gemini-3-flash-preview";
 
 // Mantém um cache em memória
 let aiClient: GoogleGenAI | null = null;
+let lastApiKey: string | null = null;
 
 function getAI(): GoogleGenAI {
   const apiKey = getStoredApiKey();
@@ -14,8 +15,9 @@ function getAI(): GoogleGenAI {
     throw new Error("API_KEY_MISSING");
   }
   // Se a chave mudou ou não existe, recria o cliente
-  if (!aiClient) {
+  if (!aiClient || lastApiKey !== apiKey) {
     aiClient = new GoogleGenAI({ apiKey });
+    lastApiKey = apiKey;
   }
   return aiClient;
 }
@@ -270,7 +272,7 @@ export async function generatePersonaImage(personaName: string): Promise<string>
   const prompt = `A highly detailed, professional portrait of ${personaName}, matching their historical or modern style. Photorealistic or artistic depending on the person.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.5-flash-preview",
     contents: { parts: [{ text: prompt }] },
     config: { imageConfig: { aspectRatio: "1:1" } },
   });

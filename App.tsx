@@ -6,7 +6,9 @@ import { LivePreview } from './components/LivePreview';
 import { CreationHistory, Creation } from './components/CreationHistory';
 import { LandingPage } from './components/LandingPage';
 import { PersonaIntro } from './components/PersonaIntro'; // Import Intro
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { interactWithGenius, PersonaId, PERSONA_MAP } from './services/gemini';
+import { hasStoredApiKey } from './services/api-key';
 import { Part } from '@google/genai';
 
 interface ChatMessage {
@@ -22,6 +24,9 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState<Creation[]>([]);
   const [mode, setMode] = useState<PersonaId>('newton');
+
+  // API Key modal (quando abrir fora do CapyUniverse)
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
   
   // Chat History
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -31,6 +36,20 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('genius_history_v2');
     if (saved) {
       setHistory(JSON.parse(saved).map((i: any) => ({ ...i, timestamp: new Date(i.timestamp) })));
+    }
+  }, []);
+
+  // Se não existir API Key (abrindo fora do hub), abre o modal na tela inicial.
+  useEffect(() => {
+    if (!hasStoredApiKey()) {
+      setApiKeyModalOpen(true);
+    }
+  }, []);
+
+  // Se não existir chave do CapyUniverse, abre modal automaticamente no load
+  useEffect(() => {
+    if (!hasStoredApiKey()) {
+      setApiKeyModalOpen(true);
     }
   }, []);
 
@@ -86,7 +105,31 @@ const App: React.FC = () => {
       }
 
       const result = await interactWithGenius(text, geminiHistory, personaId, fileBase64, mimeType);
-      
+
+      // 1) Sem API Key: abre modal e não continua fluxo
+      if (result.errorCode === 'API_KEY_MISSING') {
+        setApiKeyModalOpen(true);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'model',
+            text: 'Para continuar, preciso da sua API Key do Gemini. Abra o modal e cole a chave 🗝️',
+            timestamp: new Date()
+          }
+        ]);
+        return;
+      }
+
+      // 2) Outros erros do Gemini: mostra a mensagem retornada e não quebra o app
+      if (result.errorCode && result.errorCode !== 'API_KEY_MISSING') {
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'model', text: result.text || 'Falha ao chamar o Gemini. Tente novamente.', timestamp: new Date() }
+        ]);
+        return;
+      }
+
+      // 3) Fluxo normal
       const modelMsg: ChatMessage = { role: 'model', text: result.text, timestamp: new Date() };
       setChatMessages(prev => [...prev, modelMsg]);
 
@@ -108,7 +151,8 @@ const App: React.FC = () => {
         setHistory(prev => [newCreation, ...prev]);
       }
     } catch (error) {
-      alert("Houve uma falha na conexão temporal.");
+      console.error(error);
+      alert("Erro inesperado ao processar a mensagem. Veja o console.");
     } finally {
       setIsGenerating(false);
     }
@@ -123,7 +167,19 @@ const App: React.FC = () => {
   };
 
   if (!hasStarted && !showIntro) {
-    return <LandingPage onStart={handleLandingStart} />;
+    return (
+      <>
+        <LandingPage onStart={handleLandingStart} />
+        <ApiKeyModal
+          open={apiKeyModalOpen}
+          onClose={() => setApiKeyModalOpen(false)}
+          onSaved={() => {
+            // chave salva - nada obrigatório aqui.
+            // se quiser, você pode fechar e deixar o usuário clicar em "Start" normalmente.
+          }}
+        />
+      </>
+    );
   }
 
   // Determine LivePreview Mode based on Persona Style
@@ -138,6 +194,14 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen bg-[#09090b] text-white flex flex-col relative overflow-hidden">
+
+      <ApiKeyModal
+        open={apiKeyModalOpen}
+        onClose={() => setApiKeyModalOpen(false)}
+        onSaved={() => {
+          // chave salva - na próxima ação o Gemini já funciona
+        }}
+      />
       
       {/* INTRO OVERLAY */}
       {showIntro && (
