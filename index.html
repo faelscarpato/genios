@@ -64,6 +64,114 @@
 </head>
   <body>
     <div id="root"></div>
+    <!-- Modal API Key (CapyUniverse compatible) -->
+<div id="apiKeyOverlay" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:9999;">
+  <div style="width:min(520px,92vw);background:rgba(20,20,24,.92);border:1px solid rgba(255,255,255,.10);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.55);padding:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-size:14px;opacity:.9;margin-bottom:4px;">Configuração rápida</div>
+        <div style="font-size:18px;font-weight:700;">Inserir chave Gemini</div>
+      </div>
+      <button id="apiKeyClose" style="background:transparent;border:0;color:#fff;opacity:.7;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+
+    <p style="margin:12px 0 10px;opacity:.8;line-height:1.35;">
+      Esse app usa a mesma chave do <b>CapyUniverse</b> (<code>capyUniverseApiKey_gemini</code>).  
+      Se você abriu fora do hub, cole sua chave aqui e pronto.
+    </p>
+
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input id="apiKeyInput" type="password" placeholder="Cole sua API Key aqui"
+        style="flex:1;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 12px;color:#fff;outline:none;" />
+      <button id="apiKeyToggle"
+        style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 12px;color:#fff;cursor:pointer;">
+        Mostrar
+      </button>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button id="apiKeyLater"
+        style="background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 14px;color:#fff;opacity:.85;cursor:pointer;">
+        Agora não
+      </button>
+      <button id="apiKeySave"
+        style="background:linear-gradient(135deg, rgba(140,90,255,.9), rgba(0,200,255,.7));border:0;border-radius:14px;padding:10px 14px;color:#fff;font-weight:700;cursor:pointer;">
+        Salvar chave
+      </button>
+    </div>
+
+    <div id="apiKeyHint" style="margin-top:10px;opacity:.65;font-size:12px;">
+      Dica: a chave fica salva localmente no seu navegador.
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const KEY_STORAGE = "capyUniverseApiKey_gemini";
+
+    const overlay = document.getElementById("apiKeyOverlay");
+    const input = document.getElementById("apiKeyInput");
+    const btnSave = document.getElementById("apiKeySave");
+    const btnLater = document.getElementById("apiKeyLater");
+    const btnClose = document.getElementById("apiKeyClose");
+    const btnToggle = document.getElementById("apiKeyToggle");
+    const hint = document.getElementById("apiKeyHint");
+
+    function getKey() {
+      try {
+        const v = localStorage.getItem(KEY_STORAGE);
+        return v && v.trim() ? v.trim() : null;
+      } catch { return null; }
+    }
+    function setKey(v) {
+      try { localStorage.setItem(KEY_STORAGE, v.trim()); } catch {}
+    }
+
+    function openModal() {
+      overlay.style.display = "flex";
+      setTimeout(() => input.focus(), 50);
+    }
+    function closeModal() {
+      overlay.style.display = "none";
+    }
+
+    // Auto-open se não houver chave (fora do CapyUniverse)
+    if (!getKey()) openModal();
+
+    btnToggle.addEventListener("click", () => {
+      const isPwd = input.type === "password";
+      input.type = isPwd ? "text" : "password";
+      btnToggle.textContent = isPwd ? "Ocultar" : "Mostrar";
+    });
+
+    btnSave.addEventListener("click", () => {
+      const v = (input.value || "").trim();
+      if (!v) {
+        hint.textContent = "Cole uma chave válida antes de salvar.";
+        hint.style.opacity = 0.9;
+        return;
+      }
+      setKey(v);
+      hint.textContent = "Chave salva! Recarregando…";
+      hint.style.opacity = 0.9;
+      closeModal();
+      location.reload();
+    });
+
+    btnLater.addEventListener("click", closeModal);
+    btnClose.addEventListener("click", closeModal);
+
+    // Enter para salvar
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") btnSave.click();
+    });
+
+    // Expor utilitários se quiser chamar do app
+    window.CapyApiKey = { openModal, getKey, setKey };
+  })();
+</script>
+
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
